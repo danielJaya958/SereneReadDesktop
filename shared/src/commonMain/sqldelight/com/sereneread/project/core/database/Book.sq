@@ -1,0 +1,37 @@
+CREATE TABLE BookEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    filePath TEXT NOT NULL UNIQUE,
+    format TEXT NOT NULL,
+    addedAt INTEGER NOT NULL,
+    lastOpenedAt INTEGER,
+    progress REAL NOT NULL DEFAULT 0.0,
+    -- Added in migration 1.sqm; must stay last so SELECT * column order matches migrated databases.
+    author TEXT
+);
+
+selectAll:
+SELECT * FROM BookEntity
+ORDER BY COALESCE(lastOpenedAt, addedAt) DESC;
+
+selectById:
+SELECT * FROM BookEntity WHERE id = ?;
+
+selectByPath:
+SELECT * FROM BookEntity WHERE filePath = ?;
+
+insert:
+INSERT INTO BookEntity(title, author, filePath, format, addedAt)
+VALUES (?, ?, ?, ?, ?);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+markOpened:
+UPDATE BookEntity SET lastOpenedAt = ? WHERE id = ?;
+
+updateProgress:
+UPDATE BookEntity SET progress = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM BookEntity WHERE id = ?;
