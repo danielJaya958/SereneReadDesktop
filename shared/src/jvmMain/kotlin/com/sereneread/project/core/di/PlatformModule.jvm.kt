@@ -5,6 +5,8 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.sereneread.project.core.database.SereneReadDatabase
 import com.sereneread.project.core.platform.AwtFilePicker
 import com.sereneread.project.core.platform.FilePicker
+import com.sereneread.project.core.session.KeyringTokenStore
+import com.sereneread.project.core.session.TokenStore
 import com.sereneread.project.feature.library.data.FileBookMetadataReader
 import com.sereneread.project.feature.library.domain.BookMetadataReader
 import com.sereneread.project.feature.reader.data.EpubParser
@@ -13,6 +15,8 @@ import com.sereneread.project.feature.reader.data.PdfPageRenderer
 import com.sereneread.project.feature.reader.data.PdfParser
 import com.sereneread.project.feature.reader.presentation.PageRenderer
 import com.sereneread.project.feature.reader.domain.BookContentReader
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import java.io.File
@@ -27,6 +31,8 @@ actual val platformModule: Module = module {
             schema = SereneReadDatabase.Schema,
         )
     }
+    single<HttpClientEngine> { OkHttp.create() }
+    single<TokenStore> { KeyringTokenStore(get(IoDispatcher)) }
     single<FilePicker> { AwtFilePicker() }
     single { EpubParser() }
     single { PdfParser() }
