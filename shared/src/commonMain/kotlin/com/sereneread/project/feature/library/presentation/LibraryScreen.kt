@@ -39,6 +39,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun LibraryRoute(
     onOpenBook: (Long) -> Unit,
+    onSignOut: () -> Unit,
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -46,6 +47,7 @@ fun LibraryRoute(
         state = state,
         onImportClick = viewModel::onImportClick,
         onOpenBook = onOpenBook,
+        onSignOut = onSignOut,
         onDeleteBook = viewModel::onDeleteBook,
         onMessageShown = viewModel::onMessageShown,
     )
@@ -57,6 +59,7 @@ fun LibraryScreen(
     state: LibraryUiState,
     onImportClick: () -> Unit,
     onOpenBook: (Long) -> Unit,
+    onSignOut: () -> Unit,
     onDeleteBook: (Long) -> Unit,
     onMessageShown: () -> Unit,
 ) {
@@ -69,7 +72,12 @@ fun LibraryScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Library") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Library") },
+                actions = { TextButton(onClick = onSignOut) { Text("Keluar") } },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onImportClick) { Text("Tambah buku") }
         },

@@ -1,5 +1,6 @@
 package com.sereneread.project.core.di
 
+import com.sereneread.project.feature.auth.authModule
 import com.sereneread.project.feature.library.libraryModule
 import com.sereneread.project.feature.reader.readerModule
 import org.koin.core.context.startKoin
@@ -12,6 +13,6 @@ expect val platformModule: Module
 fun initKoin(config: KoinAppDeclaration = {}) {
     startKoin {
         config()
-        modules(platformModule, coreModule, libraryModule, readerModule)
+        modules(platformModule, coreModule, authModule, libraryModule, readerModule)
     }
 }

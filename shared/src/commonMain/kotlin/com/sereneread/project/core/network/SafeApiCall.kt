@@ -46,8 +46,8 @@ suspend fun HttpResponse.toAppError(): AppError {
 }
 
 /**
- * The API docs do not define the error body, so this is tolerant: it looks for the common
- * "error" and "message" fields and returns null for anything else, including non-JSON bodies.
+ * The server answers with {"status":false,"message":"..."}. The "error" field and the null
+ * fallback cover other sources, such as the plain text Cloudflare returns when the tunnel is down.
  */
 private suspend fun HttpResponse.readErrorMessage(): String? {
     val text = runCatching { bodyAsText() }.getOrNull() ?: return null
