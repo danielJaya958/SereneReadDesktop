@@ -1,6 +1,7 @@
 package com.sereneread.project.feature.reader
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.sereneread.project.core.lifecycle.ExitHooks
 import com.sereneread.project.core.network.AppError
 import com.sereneread.project.core.network.AppResult
 import com.sereneread.project.feature.library.FakeRemoteBookFiles
@@ -79,10 +80,11 @@ class RemoteReaderViewModelTest {
     private val bookmarks = FakeBookmarks()
     private val stats = FakeStats()
     private val clock = FakeClock()
+    private val exitHooks = ExitHooks()
 
     private fun viewModel(book: AppResult<RemoteBook> = AppResult.Success(serverBook)): RemoteReaderViewModel {
         repository.result = book
-        return RemoteReaderViewModel(9, repository, bookmarks, files, contentReader, pageRenderer, stats, clock, TimeZone.UTC)
+        return RemoteReaderViewModel(9, repository, bookmarks, files, contentReader, pageRenderer, stats, exitHooks, clock, TimeZone.UTC)
     }
 
     private class FakeClock : Clock {
@@ -235,6 +237,19 @@ class RemoteReaderViewModelTest {
         assertEquals(1, session.pagesRead)
         assertEquals(60, session.durationSeconds)
         assertEquals(9, session.bookId)
+    }
+
+    @Test
+    fun closingAppSavesPageAndSession() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        viewModel.onProgressChanged(0.5f)
+        clock.current += 30.seconds
+        viewModel.onProgressChanged(0.6f)
+
+        exitHooks.runAll()
+
+        assertEquals(listOf(61), repository.savedPages)
+        assertEquals(1, stats.sessions.size)
     }
 
     @Test

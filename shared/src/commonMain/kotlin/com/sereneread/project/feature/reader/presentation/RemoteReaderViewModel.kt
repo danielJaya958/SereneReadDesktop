@@ -3,6 +3,7 @@ package com.sereneread.project.feature.reader.presentation
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sereneread.project.core.lifecycle.ExitHooks
 import com.sereneread.project.core.network.AppResult
 import com.sereneread.project.core.ui.toUserMessage
 import com.sereneread.project.feature.library.domain.Book
@@ -38,6 +39,7 @@ class RemoteReaderViewModel(
     private val contentReader: BookContentReader,
     private val pageRenderer: PageRenderer,
     private val stats: StatsRepository,
+    private val exitHooks: ExitHooks,
     clock: Clock = Clock.System,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) : ViewModel() {
@@ -50,6 +52,7 @@ class RemoteReaderViewModel(
     private var filePath: String? = null
     private var pageCount = 0
     private var savedPage = 0
+    private val removeExitHook = exitHooks.add(::saveOnExit)
 
     init {
         viewModelScope.launch {
@@ -154,6 +157,7 @@ class RemoteReaderViewModel(
 
     override fun onCleared() {
         filePath?.let(pageRenderer::release)
+        removeExitHook()
     }
 
     /** A failed save stays unsaved, so the next page change or exit sends the position again. */

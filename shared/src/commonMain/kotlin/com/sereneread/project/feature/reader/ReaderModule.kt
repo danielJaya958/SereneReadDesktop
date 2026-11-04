@@ -10,5 +10,5 @@ import org.koin.dsl.module
 val readerModule = module {
     single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
     viewModel { (bookId: Long) -> ReaderViewModel(bookId, get(), get(), get()) }
-    viewModel { (bookId: Long) -> RemoteReaderViewModel(bookId, get(), get(), get(), get(), get(), get()) }
+    viewModel { (bookId: Long) -> RemoteReaderViewModel(bookId, get(), get(), get(), get(), get(), get(), get()) }
 }

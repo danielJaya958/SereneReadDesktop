@@ -21,8 +21,18 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.sereneread.project"
+            packageName = "SereneRead"
             packageVersion = "1.0.0"
+            description = "Ebook reader for EPUB, PDF, and TXT"
+            // From suggestRuntimeModules. Without java.sql the packaged app cannot open its SQLite database.
+            modules("java.instrument", "java.management", "java.net.http", "java.sql", "jdk.security.auth", "jdk.unsupported")
+
+            windows {
+                menu = true
+                shortcut = true
+                // Must stay the same across versions, so a new MSI replaces the old install.
+                upgradeUuid = "1e2a2bce-0bf2-42e6-9838-ae58dcf28002"
+            }
         }
     }
 }

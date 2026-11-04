@@ -1,6 +1,7 @@
 package com.sereneread.project.core.di
 
 import com.sereneread.project.core.database.SereneReadDatabase
+import com.sereneread.project.core.lifecycle.ExitHooks
 import com.sereneread.project.core.network.createHttpClient
 import com.sereneread.project.core.session.SessionManager
 import io.ktor.client.HttpClient
@@ -16,5 +17,6 @@ val coreModule = module {
     single { SereneReadDatabase(get()) }
     single<CoroutineDispatcher>(IoDispatcher) { Dispatchers.IO }
     single { SessionManager(get()) }
+    single { ExitHooks() }
     single<HttpClient> { createHttpClient(get(), get()) }
 }
