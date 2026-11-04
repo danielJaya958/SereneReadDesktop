@@ -9,6 +9,8 @@ import com.sereneread.project.feature.library.domain.RemoteBook
 import com.sereneread.project.feature.library.domain.RemoteBookFiles
 import com.sereneread.project.feature.library.domain.RemoteBookPage
 import com.sereneread.project.feature.library.domain.RemoteBookRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /** Answers from the local copy when the network is down, and queues progress until the server confirms it. */
 class OfflineRemoteBookRepository(
@@ -17,6 +19,10 @@ class OfflineRemoteBookRepository(
     private val files: RemoteBookFiles,
 ) : RemoteBookRepository by remote {
 
+    private val seen = MutableStateFlow<Map<Long, RemoteBook>>(emptyMap())
+
+    override fun peekBook(id: Long): RemoteBook? = seen.value[id]
+
     override suspend fun getBooks(page: Int, query: String, sort: BookSort): AppResult<RemoteBookPage> {
         if (page == 1) sendPendingProgress()
         return when (val result = remote.getBooks(page, query, sort)) {
@@ -24,6 +30,7 @@ class OfflineRemoteBookRepository(
                 val pending = store.pendingProgress()
                 val books = result.data.books.map { it.withPending(pending) }
                 store.saveBooks(books)
+                seen.update { it + books.associateBy(RemoteBook::id) }
                 AppResult.Success(result.data.copy(books = books))
             }
             is AppResult.Failure -> if (result.error is AppError.Network) offlinePage(page, query, sort) else result
@@ -47,7 +54,10 @@ class OfflineRemoteBookRepository(
 
     override suspend fun deleteBook(id: Long): AppResult<Unit> {
         val result = remote.deleteBook(id)
-        if (result is AppResult.Success) store.deleteBook(id)
+        if (result is AppResult.Success) {
+            store.deleteBook(id)
+            seen.update { it - id }
+        }
         return result
     }
 
@@ -90,6 +100,7 @@ class OfflineRemoteBookRepository(
 
     private suspend fun remember(book: RemoteBook): AppResult<RemoteBook> {
         store.saveBooks(listOf(book))
+        seen.update { it + (book.id to book) }
         return AppResult.Success(book)
     }
 

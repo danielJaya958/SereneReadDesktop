@@ -1,6 +1,10 @@
 package com.sereneread.project.feature.library.data
 
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.unit.IntSize
 import com.sereneread.project.feature.library.presentation.BookCovers
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -31,7 +35,7 @@ class BookCoversImpl(
             // The leading slash resolves against the server host, not the API base path.
             val response = client.get(thumbnailUrl)
             if (!response.status.isSuccess()) return null
-            val bitmap = withContext(ioDispatcher) { response.readRawBytes().decodeToImageBitmap() }
+            val bitmap = withContext(ioDispatcher) { response.readRawBytes().decodeToImageBitmap().shrinkTo(MAX_WIDTH_PX) }
             mutex.withLock { cache[thumbnailUrl] = bitmap }
             bitmap
         } catch (e: CancellationException) {
@@ -39,5 +43,26 @@ class BookCoversImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Server covers can be far larger than the 300dp poster. Scaling once on load keeps the cache small
+     * and spares the GPU from resampling a full-size image on every animation frame.
+     */
+    private fun ImageBitmap.shrinkTo(maxWidth: Int): ImageBitmap {
+        if (width <= maxWidth) return this
+        val height = (height.toLong() * maxWidth / width).toInt()
+        val target = ImageBitmap(maxWidth, height)
+        Canvas(target).drawImageRect(
+            image = this,
+            dstSize = IntSize(maxWidth, height),
+            paint = Paint().apply { filterQuality = FilterQuality.High },
+        )
+        return target
+    }
+
+    private companion object {
+        /** The detail poster is 300dp wide; 600px stays sharp at 200% display scaling. */
+        const val MAX_WIDTH_PX = 600
     }
 }

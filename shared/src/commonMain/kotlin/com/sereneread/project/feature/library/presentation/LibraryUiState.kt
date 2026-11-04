@@ -10,6 +10,9 @@ data class LibraryUiState(
     val message: String? = null,
     val query: String = "",
     val sort: BookSort = BookSort.NEWEST,
+    val filter: ShelfFilter = ShelfFilter.ALL,
+    /** The book opened out on the shelf. Kept here so it survives a visit to the detail page. */
+    val activeKey: String? = null,
     val remoteBooks: List<RemoteBook> = emptyList(),
     val remotePage: Int = 0,
     val hasMoreRemote: Boolean = false,
@@ -18,6 +21,9 @@ data class LibraryUiState(
     val isOffline: Boolean = false,
     val uploadForm: UploadForm? = null,
 )
+
+/** Which books the shelf shows. Favorites are left out: the server cannot filter them across pages. */
+enum class ShelfFilter { ALL, ONLINE, LOCAL }
 
 data class UploadForm(
     val filePath: String,

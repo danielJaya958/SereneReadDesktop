@@ -45,6 +45,13 @@ class BookCoversImplTest {
     }
 
     @Test
+    fun largeCoverIsScaledDownKeepingShape() = runTest {
+        val cover = assertNotNull(covers(png(1200, 1800)).load("/uploads/thumbnails/9.jpg"))
+
+        assertEquals(600 to 900, cover.width to cover.height)
+    }
+
+    @Test
     fun missingCoverGivesNull() = runTest {
         assertNull(covers(ByteArray(0), HttpStatusCode.NotFound).load("/uploads/thumbnails/9.jpg"))
     }

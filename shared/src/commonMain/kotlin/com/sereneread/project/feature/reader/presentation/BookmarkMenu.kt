@@ -9,14 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import com.sereneread.project.core.ui.archive.ArchiveButton
+import com.sereneread.project.core.ui.archive.ArchiveField
+import com.sereneread.project.core.ui.archive.ArchiveLink
+import com.sereneread.project.core.ui.theme.Archive
 import com.sereneread.project.feature.reader.domain.Bookmark
 import kotlinx.coroutines.launch
 
@@ -42,10 +44,10 @@ fun BookmarkMenu(
     val isMarked = bookmarks.any { it.page == currentPage }
 
     Box {
-        TextButton(onClick = { expanded = true }) { Text("Bookmark") }
+        ArchiveLink(if (bookmarks.isEmpty()) "Bookmark" else "Bookmark (${bookmarks.size})", { expanded = true })
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text(if (isMarked) "Ubah bookmark halaman ini" else "Tandai halaman ini") },
+                text = { Text(if (isMarked) "Ubah bookmark halaman ini" else "Tandai halaman ini", style = MaterialTheme.typography.labelMedium) },
                 onClick = {
                     expanded = false
                     onMarkPage()
@@ -55,7 +57,7 @@ fun BookmarkMenu(
                 Text(
                     it,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.error,
+                    color = Archive.Oxblood,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -65,6 +67,7 @@ fun BookmarkMenu(
                     text = {
                         Text(
                             bookmark.label(),
+                            style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.width(280.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -92,30 +95,32 @@ fun BookmarkDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bookmark halaman ${form.page}") },
+        title = { Text("Bookmark halaman ${form.page}", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column {
-                OutlinedTextField(
+                ArchiveField(
                     value = form.note,
                     onValueChange = onNoteChange,
-                    label = { Text("Catatan (opsional)") },
+                    label = "Catatan (opsional)",
                     enabled = !form.isSaving,
+                    singleLine = false,
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 form.error?.let {
-                    Text(it, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error)
+                    Text(it, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall, color = Archive.Oxblood)
                 }
             }
         },
         confirmButton = {
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (form.bookmarkId != null) {
-                    TextButton(onClick = onDelete, enabled = !form.isSaving) { Text("Hapus") }
+                    ArchiveLink("Hapus", onDelete, enabled = !form.isSaving, color = Archive.Muted)
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss, enabled = !form.isSaving) { Text("Batal") }
-                Button(onClick = onSave, enabled = !form.isSaving) { Text("Simpan") }
+                ArchiveButton("Batal", onDismiss, enabled = !form.isSaving)
+                Spacer(Modifier.width(12.dp))
+                ArchiveButton(if (form.isSaving) "Menyimpan..." else "Simpan", onSave, enabled = !form.isSaving, filled = true)
             }
         },
     )

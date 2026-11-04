@@ -145,6 +145,14 @@ class OfflineRepositoriesTest {
     }
 
     @Test
+    fun listedBookCanBePeekedWithoutIo() = runTest {
+        repository.getBooks(1, "")
+
+        assertEquals(book, repository.peekBook(9))
+        assertEquals(null, repository.peekBook(10))
+    }
+
+    @Test
     fun offlineDetailUsesLocalCopy() = runTest {
         repository.getBook(9)
         remote.failure = networkDown

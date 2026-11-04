@@ -45,6 +45,10 @@ data class BookChanges(
 interface RemoteBookRepository {
     suspend fun getBooks(page: Int, query: String, sort: BookSort = BookSort.NEWEST): AppResult<RemoteBookPage>
     suspend fun getBook(id: Long): AppResult<RemoteBook>
+
+    /** The last copy seen in this session, without any I/O, so a screen can draw it on its first frame. */
+    fun peekBook(id: Long): RemoteBook? = null
+
     suspend fun updateBook(id: Long, changes: BookChanges): AppResult<RemoteBook>
     suspend fun deleteBook(id: Long): AppResult<Unit>
 

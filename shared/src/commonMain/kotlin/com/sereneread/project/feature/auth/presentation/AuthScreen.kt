@@ -1,21 +1,17 @@
 package com.sereneread.project.feature.auth.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -29,6 +25,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sereneread.project.core.ui.archive.ArchiveButton
+import com.sereneread.project.core.ui.archive.ArchiveField
+import com.sereneread.project.core.ui.archive.ArchiveLink
+import com.sereneread.project.core.ui.archive.MetaLine
+import com.sereneread.project.core.ui.theme.Archive
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -67,64 +68,66 @@ fun AuthScreen(
         isEnter
     }
 
-    Scaffold { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.Center) {
+    Row(Modifier.fillMaxSize().background(Archive.Canvas), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(start = 64.dp, end = 32.dp)) {
+            MetaLine("Rak baca pribadi")
+            Text("SereneRead", style = MaterialTheme.typography.displayLarge, modifier = Modifier.padding(top = 8.dp))
+            Text(
+                "Buku Anda tersimpan di server, posisi baca ikut tersinkron, dan buku yang sudah diunduh tetap bisa dibaca tanpa koneksi.",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 20.dp).widthIn(max = 420.dp),
+            )
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             Column(
                 modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text("SereneRead", style = MaterialTheme.typography.headlineMedium)
-                Text(if (isLogin) "Masuk ke akun Anda" else "Buat akun baru")
+                Text(if (isLogin) "Masuk" else "Buat akun", style = MaterialTheme.typography.headlineMedium)
 
                 if (sessionExpired && state.error == null) {
-                    Text("Sesi berakhir. Silakan masuk lagi.", color = MaterialTheme.colorScheme.error)
+                    Text("Sesi berakhir. Silakan masuk lagi.", style = MaterialTheme.typography.bodySmall, color = Archive.Oxblood)
                 }
                 if (!isLogin) {
-                    OutlinedTextField(
-                        value = state.username,
-                        onValueChange = onUsernameChange,
-                        label = { Text("Username") },
-                        singleLine = true,
-                        enabled = enabled,
-                        modifier = fieldModifier,
-                    )
+                    ArchiveField(state.username, onUsernameChange, "Username", fieldModifier, enabled)
                 }
-                OutlinedTextField(
+                ArchiveField(
                     value = state.email,
                     onValueChange = onEmailChange,
-                    label = { Text("Email") },
-                    singleLine = true,
+                    label = "Email",
+                    modifier = fieldModifier,
                     enabled = enabled,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = fieldModifier,
                 )
-                OutlinedTextField(
+                ArchiveField(
                     value = state.password,
                     onValueChange = onPasswordChange,
-                    label = { Text("Password") },
-                    singleLine = true,
+                    label = "Password",
+                    modifier = fieldModifier,
                     enabled = enabled,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = fieldModifier,
                 )
 
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Archive.Oxblood) }
 
-                Button(onClick = onSubmit, enabled = state.canSubmit, modifier = Modifier.fillMaxWidth()) {
-                    if (state.isSubmitting) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(if (isLogin) "Masuk" else "Daftar")
-                    }
-                }
-                TextButton(
-                    onClick = { onModeChange(if (isLogin) AuthMode.Register else AuthMode.Login) },
+                ArchiveButton(
+                    text = when {
+                        state.isSubmitting -> "Memproses..."
+                        isLogin -> "Masuk"
+                        else -> "Daftar"
+                    },
+                    onClick = onSubmit,
+                    enabled = state.canSubmit,
+                    filled = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+                ArchiveLink(
+                    if (isLogin) "Belum punya akun? Daftar" else "Sudah punya akun? Masuk",
+                    { onModeChange(if (isLogin) AuthMode.Register else AuthMode.Login) },
                     enabled = enabled,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (isLogin) "Belum punya akun? Daftar" else "Sudah punya akun? Masuk")
-                }
+                    color = Archive.Muted,
+                )
             }
         }
     }

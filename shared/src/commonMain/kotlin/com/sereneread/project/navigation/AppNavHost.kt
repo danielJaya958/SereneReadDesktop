@@ -1,20 +1,28 @@
 package com.sereneread.project.navigation
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.sereneread.project.core.session.SessionManager
+import com.sereneread.project.core.ui.archive.LocalNavAnimatedScope
+import com.sereneread.project.core.ui.archive.LocalSharedTransitionScope
 import com.sereneread.project.core.session.SessionState
 import com.sereneread.project.feature.auth.domain.SignOutUseCase
 import com.sereneread.project.feature.auth.presentation.AuthRoute
@@ -37,47 +45,64 @@ fun AppNavHost(
     LaunchedEffect(sessionManager) { sessionManager.restore() }
 
     when (val current = session) {
-        SessionState.Loading -> Box(Modifier.fillMaxSize()) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
-        }
+        SessionState.Loading -> Box(Modifier.fillMaxSize())
         is SessionState.Unauthenticated -> AuthRoute(sessionExpired = current.expired)
         SessionState.Authenticated -> MainNavHost(onSignOut = { scope.launch { signOut() } })
     }
 }
 
+/** Destinations fade into each other; the shared cover moves on top, so no screen hard-cuts. */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MainNavHost(onSignOut: () -> Unit) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = LibraryDestination) {
-        composable<LibraryDestination> {
-            LibraryRoute(
-                onOpenBook = { navController.navigate(ReaderDestination(it)) },
-                onOpenRemoteBook = { navController.navigate(BookDetailDestination(it)) },
-                onOpenStats = { navController.navigate(StatsDestination) },
-                onSignOut = onSignOut,
-            )
+    SharedTransitionLayout {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            NavHost(navController = navController, startDestination = LibraryDestination) {
+                screen<LibraryDestination> {
+                    LibraryRoute(
+                        onOpenBook = { navController.navigate(ReaderDestination(it)) },
+                        onOpenRemoteBook = { navController.navigate(BookDetailDestination(it)) },
+                        onOpenStats = { navController.navigate(StatsDestination) },
+                        onSignOut = onSignOut,
+                    )
+                }
+                screen<StatsDestination> {
+                    StatsRoute(onBack = { navController.popBackStack() })
+                }
+                screen<BookDetailDestination> { entry ->
+                    BookDetailRoute(
+                        bookId = entry.toRoute<BookDetailDestination>().bookId,
+                        onBack = { navController.popBackStack() },
+                        onRead = { navController.navigate(RemoteReaderDestination(it)) },
+                    )
+                }
+                screen<RemoteReaderDestination> { entry ->
+                    RemoteReaderRoute(
+                        bookId = entry.toRoute<RemoteReaderDestination>().bookId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+                screen<ReaderDestination> { entry ->
+                    ReaderRoute(
+                        bookId = entry.toRoute<ReaderDestination>().bookId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
         }
-        composable<StatsDestination> {
-            StatsRoute(onBack = { navController.popBackStack() })
-        }
-        composable<BookDetailDestination> { entry ->
-            BookDetailRoute(
-                bookId = entry.toRoute<BookDetailDestination>().bookId,
-                onBack = { navController.popBackStack() },
-                onRead = { navController.navigate(RemoteReaderDestination(it)) },
-            )
-        }
-        composable<RemoteReaderDestination> { entry ->
-            RemoteReaderRoute(
-                bookId = entry.toRoute<RemoteReaderDestination>().bookId,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable<ReaderDestination> { entry ->
-            ReaderRoute(
-                bookId = entry.toRoute<ReaderDestination>().bookId,
-                onBack = { navController.popBackStack() },
-            )
-        }
+    }
+}
+
+private inline fun <reified T : Any> NavGraphBuilder.screen(
+    noinline content: @Composable (NavBackStackEntry) -> Unit,
+) {
+    composable<T>(
+        enterTransition = { fadeIn(tween(320, delayMillis = 120)) },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(320, delayMillis = 120)) },
+        popExitTransition = { fadeOut(tween(200)) },
+    ) { entry ->
+        CompositionLocalProvider(LocalNavAnimatedScope provides this) { content(entry) }
     }
 }

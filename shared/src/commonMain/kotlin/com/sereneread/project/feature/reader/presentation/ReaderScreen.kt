@@ -2,6 +2,8 @@ package com.sereneread.project.feature.reader.presentation
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,12 +24,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -48,6 +47,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sereneread.project.core.ui.archive.ArchiveLink
+import com.sereneread.project.core.ui.archive.BackButton
+import com.sereneread.project.core.ui.archive.MetaLine
+import com.sereneread.project.core.ui.theme.Archive
 import com.sereneread.project.feature.reader.domain.BookContent
 import com.sereneread.project.feature.reader.domain.Chapter
 import com.sereneread.project.feature.reader.domain.PageSize
@@ -134,7 +137,6 @@ private class FlatDocument(chapters: List<Chapter>) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     state: ReaderUiState,
@@ -158,41 +160,50 @@ fun ReaderScreen(
         else -> null
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        subtitle?.let {
-                            Text(it, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Kembali") } },
-                actions = {
-                    extraActions(listState)
-                    if (sections != null && sections.titles.size > 1) {
-                        SectionMenu(sections, sections.indexAt(currentItem), listState)
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+    Column(Modifier.fillMaxSize().background(Archive.Canvas)) {
+        // A slim bar: the page is the subject here, so the header stays out of its way.
+        Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 16.dp)) {
+            BackButton(onBack, Modifier.align(Alignment.CenterStart))
+            Column(
+                Modifier.align(Alignment.Center).widthIn(max = 520.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(state.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                subtitle?.let { MetaLine(it, color = Archive.Muted) }
+            }
+            Row(
+                Modifier.align(Alignment.CenterEnd),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                extraActions(listState)
+                if (sections != null && sections.titles.size > 1) {
+                    SectionMenu(sections, sections.indexAt(currentItem), listState)
+                }
+            }
+        }
+        HorizontalDivider(color = Archive.Line)
+
+        Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                state.error != null -> Text(state.error, Modifier.align(Alignment.Center))
+                state.error != null -> Text(
+                    state.error,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.align(Alignment.Center).widthIn(max = 520.dp),
+                )
                 state.downloadProgress != null -> Column(
                     modifier = Modifier.align(Alignment.Center).widthIn(max = 320.dp).fillMaxWidth().padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("Mengunduh buku...")
+                    Text("Mengunduh buku...", style = MaterialTheme.typography.headlineSmall)
                     LinearProgressIndicator(
                         progress = { state.downloadProgress },
                         modifier = Modifier.fillMaxWidth(),
+                        color = Archive.Ink,
+                        trackColor = Archive.Line,
                     )
                 }
-                content == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                content == null -> Text("Membuka buku...", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.align(Alignment.Center))
                 document != null -> {
                     TrackProgress(listState, document.paragraphs.lastIndex, state.initialProgress, onProgressChanged)
                     DocumentContent(document, listState)
@@ -213,7 +224,7 @@ private fun SectionMenu(sections: Sections, currentSection: Int, listState: Lazy
     val scope = rememberCoroutineScope()
 
     Box {
-        TextButton(onClick = { expanded = true }) { Text("Daftar isi") }
+        ArchiveLink("Daftar isi", { expanded = true })
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             sections.titles.forEachIndexed { index, title ->
                 DropdownMenuItem(
@@ -221,7 +232,7 @@ private fun SectionMenu(sections: Sections, currentSection: Int, listState: Lazy
                         Text(
                             title,
                             style = if (index == currentSection) {
-                                MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary)
+                                MaterialTheme.typography.bodyMedium.copy(color = Archive.Accent)
                             } else {
                                 MaterialTheme.typography.bodyMedium
                             },
@@ -272,9 +283,9 @@ private fun DocumentContent(document: FlatDocument, listState: LazyListState) {
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = if (paragraph.isHeading) 16.dp else 8.dp),
                 style = if (paragraph.isHeading) {
-                    MaterialTheme.typography.headlineSmall
+                    MaterialTheme.typography.headlineMedium
                 } else {
-                    MaterialTheme.typography.bodyLarge.copy(lineHeight = 28.sp)
+                    MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 30.sp)
                 },
             )
         }
@@ -332,11 +343,11 @@ private fun PdfPage(
     }
 
     Box(
-        Modifier.width(width).aspectRatio(size.width / size.height).background(Color.White),
+        Modifier.width(width).aspectRatio(size.width / size.height).background(Color.White).border(1.dp, Archive.Line),
         contentAlignment = Alignment.Center,
     ) {
         when (val current = image) {
-            PageImage.Loading -> CircularProgressIndicator()
+            PageImage.Loading -> CircularProgressIndicator(color = Archive.Line, strokeWidth = 2.dp)
             PageImage.Failed -> Text("Gagal memuat halaman ${index + 1}.", color = Color.DarkGray)
             is PageImage.Ready -> Image(current.bitmap, contentDescription = "Halaman ${index + 1}", Modifier.fillMaxSize())
         }

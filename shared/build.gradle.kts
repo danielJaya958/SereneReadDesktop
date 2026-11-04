@@ -51,6 +51,7 @@ kotlin {
         jvmTest.dependencies {
             // Skia natives, so tests can decode images the way the desktop app does.
             implementation(compose.desktop.currentOs)
+            implementation(compose.desktop.uiTestJUnit4)
         }
     }
 }

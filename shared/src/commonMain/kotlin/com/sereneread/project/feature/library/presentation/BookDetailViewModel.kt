@@ -19,7 +19,10 @@ class BookDetailViewModel(
     private val files: RemoteBookFiles,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(BookDetailUiState())
+    // Starts from the copy the shelf already showed, so the cover is there for the opening transition.
+    private val _state = MutableStateFlow(
+        repository.peekBook(bookId).let { BookDetailUiState(book = it, isLoading = it == null) },
+    )
     val state: StateFlow<BookDetailUiState> = _state.asStateFlow()
 
     /** Runs on first display and on return from the reader, where the page may have changed. */

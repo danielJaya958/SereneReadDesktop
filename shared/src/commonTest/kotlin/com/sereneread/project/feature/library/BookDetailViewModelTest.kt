@@ -43,6 +43,9 @@ class BookDetailViewModelTest {
 
         override suspend fun getBook(id: Long) = getResult
 
+        var peeked: RemoteBook? = null
+        override fun peekBook(id: Long) = peeked
+
         override suspend fun updateBook(id: Long, changes: BookChanges): AppResult<RemoteBook> {
             lastChanges = changes
             return updateResult ?: AppResult.Success(
@@ -103,6 +106,16 @@ class BookDetailViewModelTest {
 
         assertEquals(moved, viewModel.state.value.book)
         assertFalse(true in loadingStates)
+    }
+
+    @Test
+    fun startsFromPeekedCopyBeforeLoading() {
+        repository.peeked = book.copy(title = "Dari rak")
+
+        val viewModel = BookDetailViewModel(9, repository, files)
+
+        assertEquals("Dari rak", viewModel.state.value.book?.title)
+        assertFalse(viewModel.state.value.isLoading)
     }
 
     @Test

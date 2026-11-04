@@ -73,6 +73,14 @@ class LibraryViewModel(
         loadRemotePage(1, debounce = true)
     }
 
+    fun onFilterChange(filter: ShelfFilter) {
+        _state.update { it.copy(filter = filter) }
+    }
+
+    fun onActiveChange(key: String) {
+        _state.update { it.copy(activeKey = key) }
+    }
+
     fun onSortChange(sort: BookSort) {
         if (sort == _state.value.sort) return
         _state.update { it.copy(sort = sort) }
