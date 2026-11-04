@@ -20,6 +20,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.navigationCompose)
             implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.kotlinx.datetime)
 
             api(project.dependencies.platform(libs.koin.bom))
             api(libs.koin.core)
@@ -42,8 +43,14 @@ kotlin {
             implementation(libs.sqldelight.sqliteDriver)
             implementation(libs.jsoup)
             implementation(libs.pdfbox)
+            // Scanned PDFs often use JBIG2; without this plugin PDFBox renders those pages blank.
+            runtimeOnly(libs.jbig2Imageio)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.javaKeyring)
+        }
+        jvmTest.dependencies {
+            // Skia natives, so tests can decode images the way the desktop app does.
+            implementation(compose.desktop.currentOs)
         }
     }
 }

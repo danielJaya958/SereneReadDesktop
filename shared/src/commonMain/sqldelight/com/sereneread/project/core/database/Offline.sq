@@ -1,0 +1,71 @@
+CREATE TABLE RemoteBookEntity (
+    id INTEGER PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL,
+    publishedYear INTEGER NOT NULL,
+    lastReadPage INTEGER NOT NULL,
+    totalPages INTEGER NOT NULL,
+    isFavorite INTEGER NOT NULL
+);
+
+CREATE TABLE PendingProgress (
+    bookId INTEGER PRIMARY KEY NOT NULL,
+    page INTEGER NOT NULL
+);
+
+CREATE TABLE PendingSession (
+    clientSessionId TEXT PRIMARY KEY NOT NULL,
+    bookId INTEGER NOT NULL,
+    startedAt TEXT NOT NULL,
+    endedAt TEXT NOT NULL,
+    localDate TEXT NOT NULL,
+    startPage INTEGER NOT NULL,
+    endPage INTEGER NOT NULL,
+    pagesRead INTEGER NOT NULL,
+    durationSeconds INTEGER NOT NULL
+);
+
+saveBook:
+INSERT OR REPLACE INTO RemoteBookEntity VALUES ?;
+
+selectBooks:
+SELECT * FROM RemoteBookEntity ORDER BY title;
+
+selectBook:
+SELECT * FROM RemoteBookEntity WHERE id = ?;
+
+updateCachedPage:
+UPDATE RemoteBookEntity SET lastReadPage = ? WHERE id = ?;
+
+deleteBook:
+DELETE FROM RemoteBookEntity WHERE id = ?;
+
+clearBooks:
+DELETE FROM RemoteBookEntity;
+
+savePendingProgress:
+INSERT OR REPLACE INTO PendingProgress VALUES ?;
+
+selectPendingProgress:
+SELECT * FROM PendingProgress;
+
+deletePendingProgress:
+DELETE FROM PendingProgress WHERE bookId = ? AND page = ?;
+
+deleteBookProgress:
+DELETE FROM PendingProgress WHERE bookId = ?;
+
+clearPendingProgress:
+DELETE FROM PendingProgress;
+
+savePendingSession:
+INSERT OR REPLACE INTO PendingSession VALUES ?;
+
+selectPendingSessions:
+SELECT * FROM PendingSession;
+
+deletePendingSession:
+DELETE FROM PendingSession WHERE clientSessionId = ?;
+
+clearPendingSessions:
+DELETE FROM PendingSession;

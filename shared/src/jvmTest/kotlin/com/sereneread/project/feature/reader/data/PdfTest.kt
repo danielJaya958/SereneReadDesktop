@@ -11,11 +11,13 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocume
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem
 import java.io.File
 import java.nio.file.Files
+import javax.imageio.ImageIO
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PdfTest {
 
@@ -89,6 +91,11 @@ class PdfTest {
         renderer.release(file.path)
         assertEquals(300, renderer.renderImage(file.path, 2, 300).width)
         renderer.release(file.path)
+    }
+
+    @Test
+    fun canDecodeJbig2ScannedPages() {
+        assertTrue(ImageIO.getImageReadersByFormatName("JBIG2").hasNext())
     }
 
     private fun assertEquals(expected: Int, actual: Int, absoluteTolerance: Int) {

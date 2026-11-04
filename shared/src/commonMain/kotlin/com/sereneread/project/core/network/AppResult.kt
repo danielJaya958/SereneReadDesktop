@@ -20,3 +20,7 @@ sealed interface AppError {
     /** A response this client cannot handle, such as a body that does not match its DTO. */
     data class Unexpected(val cause: Throwable?, val status: Int? = null) : AppError
 }
+
+/** True when the same request can succeed later. Other errors will fail again, so resending is pointless. */
+val AppError.isRetryable: Boolean
+    get() = this is AppError.Network || this is AppError.Server || this is AppError.Unauthorized

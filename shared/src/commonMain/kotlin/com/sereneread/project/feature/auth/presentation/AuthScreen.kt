@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,7 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,12 @@ fun AuthScreen(
 ) {
     val isLogin = state.mode == AuthMode.Login
     val enabled = !state.isSubmitting
+    // ImeAction does not fire for a physical keyboard on desktop, so Enter is handled here.
+    val fieldModifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+        val isEnter = event.key == Key.Enter || event.key == Key.NumPadEnter
+        if (isEnter && event.type == KeyEventType.KeyDown) onSubmit()
+        isEnter
+    }
 
     Scaffold { padding ->
         Box(Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.Center) {
@@ -77,7 +86,7 @@ fun AuthScreen(
                         label = { Text("Username") },
                         singleLine = true,
                         enabled = enabled,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = fieldModifier,
                     )
                 }
                 OutlinedTextField(
@@ -87,7 +96,7 @@ fun AuthScreen(
                     singleLine = true,
                     enabled = enabled,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = fieldModifier,
                 )
                 OutlinedTextField(
                     value = state.password,
@@ -96,12 +105,8 @@ fun AuthScreen(
                     singleLine = true,
                     enabled = enabled,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = fieldModifier,
                 )
 
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

@@ -48,6 +48,7 @@ class DatabaseMigrationTest {
         val books = queries.selectAll().executeAsList().sortedBy { it.id }
         assertEquals(listOf("Lama" to null, "Baru" to "Penulis"), books.map { it.title to it.author })
         assertEquals(listOf("/a.txt", "/b.epub"), books.map { it.filePath })
+        assertEquals(emptyList(), SereneReadDatabase(driver).offlineQueries.selectBooks().executeAsList())
         driver.close()
     }
 }

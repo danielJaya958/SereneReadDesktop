@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,6 +56,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.math.roundToInt
 
 @Composable
 fun ReaderRoute(
@@ -69,6 +71,53 @@ fun ReaderRoute(
         onProgressChanged = viewModel::onProgressChanged,
         renderPage = viewModel::renderPage,
     )
+}
+
+@Composable
+fun RemoteReaderRoute(
+    bookId: Long,
+    onBack: () -> Unit,
+    viewModel: RemoteReaderViewModel = koinViewModel { parametersOf(bookId) },
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var isLeaving by remember { mutableStateOf(false) }
+
+    ReaderScreen(
+        state = state,
+        onBack = {
+            if (!isLeaving) {
+                isLeaving = true
+                scope.launch {
+                    viewModel.saveOnExit()
+                    onBack()
+                }
+            }
+        },
+        onProgressChanged = viewModel::onProgressChanged,
+        renderPage = viewModel::renderPage,
+        extraActions = { listState ->
+            if (state.content != null) {
+                BookmarkMenu(
+                    bookmarks = state.bookmarks,
+                    currentPage = state.currentPage,
+                    error = state.bookmarkError,
+                    listState = listState,
+                    onMarkPage = viewModel::onBookmarkFormOpen,
+                )
+            }
+        },
+    )
+
+    state.bookmarkForm?.let { form ->
+        BookmarkDialog(
+            form = form,
+            onNoteChange = viewModel::onBookmarkNoteChange,
+            onSave = viewModel::onBookmarkSave,
+            onDelete = viewModel::onBookmarkDelete,
+            onDismiss = viewModel::onBookmarkFormDismiss,
+        )
+    }
 }
 
 /** Jump targets for the table-of-contents menu, as LazyColumn item indices. */
@@ -92,6 +141,7 @@ fun ReaderScreen(
     onBack: () -> Unit,
     onProgressChanged: (Float) -> Unit,
     renderPage: suspend (pageIndex: Int, widthPx: Int) -> ImageBitmap,
+    extraActions: @Composable (LazyListState) -> Unit = {},
 ) {
     val content = state.content
     val document = remember(content) { (content as? BookContent.Document)?.let { FlatDocument(it.chapters) } }
@@ -121,6 +171,7 @@ fun ReaderScreen(
                 },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Kembali") } },
                 actions = {
+                    extraActions(listState)
                     if (sections != null && sections.titles.size > 1) {
                         SectionMenu(sections, sections.indexAt(currentItem), listState)
                     }
@@ -131,6 +182,16 @@ fun ReaderScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.error != null -> Text(state.error, Modifier.align(Alignment.Center))
+                state.downloadProgress != null -> Column(
+                    modifier = Modifier.align(Alignment.Center).widthIn(max = 320.dp).fillMaxWidth().padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("Mengunduh buku...")
+                    LinearProgressIndicator(
+                        progress = { state.downloadProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 content == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 document != null -> {
                     TrackProgress(listState, document.paragraphs.lastIndex, state.initialProgress, onProgressChanged)
@@ -186,7 +247,7 @@ private fun TrackProgress(
 ) {
     LaunchedEffect(lastIndex) {
         if (initialProgress > 0f && lastIndex > 0) {
-            listState.scrollToItem((lastIndex * initialProgress).toInt())
+            listState.scrollToItem((lastIndex * initialProgress).roundToInt())
         }
         snapshotFlow {
             val atEnd = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == lastIndex

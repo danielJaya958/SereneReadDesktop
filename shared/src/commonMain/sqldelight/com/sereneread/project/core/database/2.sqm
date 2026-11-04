@@ -1,0 +1,26 @@
+CREATE TABLE RemoteBookEntity (
+    id INTEGER PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL,
+    publishedYear INTEGER NOT NULL,
+    lastReadPage INTEGER NOT NULL,
+    totalPages INTEGER NOT NULL,
+    isFavorite INTEGER NOT NULL
+);
+
+CREATE TABLE PendingProgress (
+    bookId INTEGER PRIMARY KEY NOT NULL,
+    page INTEGER NOT NULL
+);
+
+CREATE TABLE PendingSession (
+    clientSessionId TEXT PRIMARY KEY NOT NULL,
+    bookId INTEGER NOT NULL,
+    startedAt TEXT NOT NULL,
+    endedAt TEXT NOT NULL,
+    localDate TEXT NOT NULL,
+    startPage INTEGER NOT NULL,
+    endPage INTEGER NOT NULL,
+    pagesRead INTEGER NOT NULL,
+    durationSeconds INTEGER NOT NULL
+);
