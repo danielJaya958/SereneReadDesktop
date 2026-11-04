@@ -22,7 +22,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "SereneRead"
-            packageVersion = "1.0.0"
+            // Release builds pass -PappVersion from the Git tag; local builds use the fallback.
+            packageVersion = providers.gradleProperty("appVersion").getOrElse("1.0.0")
             description = "Ebook reader for EPUB, PDF, and TXT"
             // From suggestRuntimeModules. Without java.sql the packaged app cannot open its SQLite database.
             modules("java.instrument", "java.management", "java.net.http", "java.sql", "jdk.security.auth", "jdk.unsupported")
