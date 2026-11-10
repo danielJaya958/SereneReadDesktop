@@ -8,6 +8,10 @@ interface RemoteBookFiles {
     suspend fun getOrDownload(bookId: Long, onProgress: (Float) -> Unit): AppResult<String>
 
     suspend fun isDownloaded(bookId: Long): Boolean
+
+    /** The saved file, or null when the book has not been downloaded. */
+    suspend fun downloadedPath(bookId: Long): String?
+
     suspend fun delete(bookId: Long)
     suspend fun deleteAll()
 }

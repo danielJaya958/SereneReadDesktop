@@ -81,7 +81,6 @@ import com.sereneread.project.core.ui.archive.MetaLine
 import com.sereneread.project.core.ui.archive.coverKey
 import com.sereneread.project.core.ui.archive.sharedCover
 import com.sereneread.project.core.ui.theme.Archive
-import com.sereneread.project.feature.library.domain.Book
 import com.sereneread.project.feature.library.domain.BookSort
 import com.sereneread.project.feature.library.domain.RemoteBook
 import kotlinx.coroutines.delay
@@ -95,7 +94,6 @@ private val CoverHeight = 360.dp
 
 @Composable
 fun LibraryRoute(
-    onOpenBook: (Long) -> Unit,
     onOpenRemoteBook: (Long) -> Unit,
     onOpenStats: () -> Unit,
     onSignOut: () -> Unit,
@@ -108,16 +106,14 @@ fun LibraryRoute(
     LibraryScreen(
         state = state,
         loadCover = covers::load,
-        onOpen = { book -> book.remoteId?.let(onOpenRemoteBook) ?: book.localId?.let(onOpenBook) },
+        onOpen = { book -> book.remoteId?.let(onOpenRemoteBook) },
         onActiveChange = viewModel::onActiveChange,
         onFilterChange = viewModel::onFilterChange,
         onQueryChange = viewModel::onQueryChange,
         onSortChange = viewModel::onSortChange,
         onLoadMore = viewModel::onLoadMore,
         onRetryRemote = viewModel::onRetryRemote,
-        onImportClick = viewModel::onImportClick,
         onUploadClick = viewModel::onUploadClick,
-        onDeleteLocal = viewModel::onDeleteBook,
         onMessageShown = viewModel::onMessageShown,
         onOpenStats = onOpenStats,
         onSignOut = onSignOut,
@@ -143,14 +139,12 @@ fun LibraryScreen(
     onSortChange: (BookSort) -> Unit,
     onLoadMore: () -> Unit,
     onRetryRemote: () -> Unit,
-    onImportClick: () -> Unit,
     onUploadClick: () -> Unit,
-    onDeleteLocal: (Long) -> Unit,
     onMessageShown: () -> Unit,
     onOpenStats: () -> Unit,
     onSignOut: () -> Unit,
 ) {
-    val books = remember(state.remoteBooks, state.books, state.filter, state.query) { shelfBooks(state) }
+    val books = remember(state.remoteBooks, state.downloaded, state.filter, state.query) { shelfBooks(state) }
     val activeIndex = books.indexOfFirst { it.key == state.activeKey }.takeIf { it >= 0 } ?: 0
     val active = books.getOrNull(activeIndex)
     val focus = remember { FocusRequester() }
@@ -167,7 +161,7 @@ fun LibraryScreen(
         }
     }
     // Keep paging while the reader walks toward the end of the server books.
-    val remoteCount = if (state.filter == ShelfFilter.LOCAL) 0 else state.remoteBooks.size
+    val remoteCount = if (state.filter == ShelfFilter.ALL) state.remoteBooks.size else 0
     LaunchedEffect(activeIndex, remoteCount, state.hasMoreRemote, state.isLoadingRemote) {
         if (state.hasMoreRemote && !state.isLoadingRemote && remoteCount > 0 && activeIndex >= remoteCount - 3) onLoadMore()
     }
@@ -192,7 +186,6 @@ fun LibraryScreen(
                 actions = {
                     ArchiveLink("Statistik", onOpenStats)
                     ArchiveLink("Unggah PDF", onUploadClick)
-                    ArchiveLink("Tambah file lokal", onImportClick)
                     ArchiveLink("Keluar", onSignOut, color = Archive.Muted)
                 },
             )
@@ -204,19 +197,19 @@ fun LibraryScreen(
                     // The caption sits right under the shelf, so the title reads as the active book's label.
                     active != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Shelf(books, activeIndex, loadCover, onActiveChange, onOpen, onStep = move)
-                        Caption(active, onDeleteLocal, canGoBack = activeIndex > 0, canGoForward = activeIndex < books.lastIndex, move)
+                        Caption(active, canGoBack = activeIndex > 0, canGoForward = activeIndex < books.lastIndex, move)
                     }
-                    state.isLoadingRemote && state.filter != ShelfFilter.LOCAL -> ShelfMessage("Menata rak...")
-                    state.remoteError != null && state.filter != ShelfFilter.LOCAL -> ShelfMessage(state.remoteError) {
+                    state.filter == ShelfFilter.DOWNLOADED && state.query.isBlank() -> ShelfMessage(
+                        "Belum ada buku yang diunduh. Buka sebuah buku, lalu pilih Unduh untuk dibaca offline.",
+                    )
+                    state.isLoadingRemote && state.filter == ShelfFilter.ALL -> ShelfMessage("Menata rak...")
+                    state.remoteError != null && state.filter == ShelfFilter.ALL -> ShelfMessage(state.remoteError) {
                         ArchiveButton("Coba lagi", onRetryRemote)
                     }
                     state.query.isNotBlank() -> ShelfMessage("Tidak ada buku yang cocok dengan \"${state.query.trim()}\".")
                     state.isOffline -> ShelfMessage("Tidak ada koneksi, dan belum ada buku yang diunduh untuk dibaca offline.")
-                    else -> ShelfMessage("Rak masih kosong. Unggah PDF ke server atau tambahkan file dari komputer ini.") {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ArchiveButton("Unggah PDF", onUploadClick, filled = true)
-                            ArchiveButton("Tambah file lokal", onImportClick)
-                        }
+                    else -> ShelfMessage("Rak masih kosong. Unggah PDF untuk mulai membaca.") {
+                        ArchiveButton("Unggah PDF", onUploadClick, filled = true)
                     }
                 }
             }
@@ -231,27 +224,30 @@ fun LibraryScreen(
 }
 
 private fun footerText(state: LibraryUiState, count: Int): String = when {
+    state.pendingSync > 0 && state.isOffline ->
+        "Tidak ada koneksi. ${state.pendingSync} catatan baca tersimpan dan akan dikirim saat online."
+    state.pendingSync > 0 -> "${state.pendingSync} catatan baca menunggu dikirim ke server."
     state.isOffline -> "Tidak ada koneksi. Rak hanya berisi buku yang sudah diunduh."
     state.remoteError != null && count > 0 -> state.remoteError
     count == 0 -> ""
-    state.hasMoreRemote && state.filter != ShelfFilter.LOCAL -> "$count buku dimuat. Geser ke kanan untuk memuat lebih banyak."
+    state.hasMoreRemote && state.filter == ShelfFilter.ALL -> "$count buku dimuat. Geser ke kanan untuk memuat lebih banyak."
     else -> "$count buku di rak."
 }
 
 private fun shelfBooks(state: LibraryUiState): List<ShelfBook> {
-    val remote = if (state.filter == ShelfFilter.LOCAL) emptyList() else state.remoteBooks.map { it.toShelf() }
-    val needle = state.query.trim()
-    val local = if (state.filter == ShelfFilter.ONLINE) {
-        emptyList()
-    } else {
-        state.books
-            .filter { needle.isEmpty() || it.title.contains(needle, true) || it.author.orEmpty().contains(needle, true) }
-            .map { it.toShelf() }
+    val saved = state.downloaded.mapTo(HashSet()) { it.id }
+    return when (state.filter) {
+        ShelfFilter.ALL -> state.remoteBooks.map { it.toShelf(isDownloaded = it.id in saved) }
+        ShelfFilter.DOWNLOADED -> {
+            val needle = state.query.trim()
+            state.downloaded
+                .filter { needle.isEmpty() || it.title.contains(needle, true) || it.author.contains(needle, true) }
+                .map { it.toShelf(isDownloaded = true) }
+        }
     }
-    return remote + local
 }
 
-internal fun RemoteBook.toShelf() = ShelfBook(
+internal fun RemoteBook.toShelf(isDownloaded: Boolean = false) = ShelfBook(
     key = "remote-$id",
     title = title,
     author = author,
@@ -261,18 +257,7 @@ internal fun RemoteBook.toShelf() = ShelfBook(
     thumbnailUrl = thumbnailUrl,
     isFavorite = isFavorite,
     remoteId = id,
-)
-
-private fun Book.toShelf() = ShelfBook(
-    key = "local-$id",
-    title = title,
-    author = author,
-    year = null,
-    format = format.name,
-    progressText = "${(progress * 100).toInt()}% dibaca",
-    thumbnailUrl = null,
-    isFavorite = false,
-    localId = id,
+    isDownloaded = isDownloaded,
 )
 
 @Composable
@@ -299,7 +284,7 @@ private fun ShelfControls(
                 label = "Cari judul atau pengarang",
                 modifier = Modifier.width(360.dp),
             )
-            if (state.filter != ShelfFilter.LOCAL) SortMenu(state.sort, onSortChange)
+            if (state.filter == ShelfFilter.ALL) SortMenu(state.sort, onSortChange)
         }
     }
 }
@@ -307,8 +292,7 @@ private fun ShelfControls(
 private val ShelfFilter.label: String
     get() = when (this) {
         ShelfFilter.ALL -> "Semua"
-        ShelfFilter.ONLINE -> "Online"
-        ShelfFilter.LOCAL -> "Lokal"
+        ShelfFilter.DOWNLOADED -> "Diunduh"
     }
 
 @Composable
@@ -519,7 +503,6 @@ private fun ShelfItem(
 @Composable
 private fun Caption(
     book: ShelfBook,
-    onDeleteLocal: (Long) -> Unit,
     canGoBack: Boolean,
     canGoForward: Boolean,
     move: (Int) -> Unit,
@@ -544,15 +527,18 @@ private fun Caption(
                     modifier = Modifier.width(520.dp),
                     textAlign = TextAlign.Center,
                 )
-                MetaLine(listOfNotNull(current.author, if (current.isFavorite) "Favorit" else null).joinToString("  ·  "))
+                MetaLine(
+                    listOfNotNull(
+                        current.author,
+                        if (current.isFavorite) "Favorit" else null,
+                        if (current.isDownloaded) "Tersimpan offline" else null,
+                    ).joinToString("  ·  "),
+                )
                 Text(
                     listOfNotNull(current.year?.toString(), current.format, current.progressText).joinToString("  /  "),
                     style = MaterialTheme.typography.labelMedium,
                     color = Archive.Muted,
                 )
-                current.localId?.let { id ->
-                    ArchiveLink("Hapus dari rak", { onDeleteLocal(id) }, color = Archive.Muted)
-                }
             }
         }
         Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

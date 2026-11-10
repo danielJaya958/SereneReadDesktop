@@ -6,7 +6,10 @@ import com.sereneread.project.core.database.RemoteBookEntity
 import com.sereneread.project.core.database.SereneReadDatabase
 import com.sereneread.project.feature.library.domain.RemoteBook
 import com.sereneread.project.feature.stats.domain.ReadingSession
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToOne
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
@@ -64,6 +67,8 @@ class OfflineStore(
     suspend fun removeSession(clientSessionId: String) = withContext(ioDispatcher) {
         queries.deletePendingSession(clientSessionId)
     }
+
+    fun pendingCount(): Flow<Long> = queries.countPending().asFlow().mapToOne(ioDispatcher)
 
     suspend fun clear() = withContext(ioDispatcher) {
         queries.transaction {

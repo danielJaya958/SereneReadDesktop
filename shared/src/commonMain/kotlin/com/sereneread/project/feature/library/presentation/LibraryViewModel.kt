@@ -8,11 +8,9 @@ import com.sereneread.project.core.ui.toUserMessage
 import com.sereneread.project.feature.library.domain.BookFormat
 import com.sereneread.project.feature.library.domain.BookSort
 import com.sereneread.project.feature.library.domain.BookMetadataReader
-import com.sereneread.project.feature.library.domain.BookRepository
-import com.sereneread.project.feature.library.domain.ImportBookUseCase
-import com.sereneread.project.feature.library.domain.ImportResult
 import com.sereneread.project.feature.library.domain.RemoteBookRepository
 import com.sereneread.project.feature.library.domain.UploadBook
+import com.sereneread.project.feature.offline.data.OfflineSync
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +22,10 @@ import kotlinx.coroutines.launch
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
 class LibraryViewModel(
-    private val repository: BookRepository,
     private val remoteRepository: RemoteBookRepository,
-    private val importBook: ImportBookUseCase,
     private val metadataReader: BookMetadataReader,
     private val filePicker: FilePicker,
+    private val sync: OfflineSync,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LibraryUiState())
@@ -39,29 +36,14 @@ class LibraryViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observeBooks().collect { books ->
-                _state.update { it.copy(books = books, isLoading = false) }
-            }
+            sync.pendingCount.collect { count -> _state.update { it.copy(pendingSync = count) } }
         }
     }
 
-    /** Runs on first display and on return from detail, where the book may have changed. */
-    fun onScreenShown() = loadRemotePage(1)
-
-    fun onImportClick() {
-        viewModelScope.launch {
-            val path = filePicker.pickFile(BookFormat.extensions) ?: return@launch
-            val message = when (importBook(path)) {
-                is ImportResult.Imported -> null
-                is ImportResult.AlreadyExists -> "Buku sudah ada di library."
-                ImportResult.UnsupportedFormat -> "Format tidak didukung. Pilih file EPUB, PDF, atau TXT."
-            }
-            _state.update { it.copy(message = message) }
-        }
-    }
-
-    fun onDeleteBook(id: Long) {
-        viewModelScope.launch { repository.deleteBook(id) }
+    /** Runs on first display and on return from detail, where a book may have changed or been downloaded. */
+    fun onScreenShown() {
+        loadRemotePage(1)
+        loadDownloaded()
     }
 
     fun onMessageShown() {
@@ -75,6 +57,7 @@ class LibraryViewModel(
 
     fun onFilterChange(filter: ShelfFilter) {
         _state.update { it.copy(filter = filter) }
+        if (filter == ShelfFilter.DOWNLOADED) loadDownloaded()
     }
 
     fun onActiveChange(key: String) {
@@ -127,6 +110,13 @@ class LibraryViewModel(
                     loadRemotePage(1)
                 }
             }
+        }
+    }
+
+    private fun loadDownloaded() {
+        viewModelScope.launch {
+            val books = remoteRepository.downloadedBooks()
+            _state.update { it.copy(downloaded = books) }
         }
     }
 

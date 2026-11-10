@@ -2,6 +2,7 @@ package com.sereneread.project.feature.library
 
 import com.sereneread.project.core.network.AppError
 import com.sereneread.project.core.network.AppResult
+import com.sereneread.project.core.platform.FileLocations
 import com.sereneread.project.feature.library.domain.BookChanges
 import com.sereneread.project.feature.library.domain.BookSort
 import com.sereneread.project.feature.library.domain.RemoteBook
@@ -9,6 +10,7 @@ import com.sereneread.project.feature.library.domain.RemoteBookPage
 import com.sereneread.project.feature.library.domain.RemoteBookRepository
 import com.sereneread.project.feature.library.domain.UploadBook
 import com.sereneread.project.feature.library.presentation.BookDetailViewModel
+import com.sereneread.project.feature.library.presentation.DownloadState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,8 +72,11 @@ class BookDetailViewModelTest {
 
     private val repository = FakeRepository()
     private val files = FakeRemoteBookFiles()
+    private val revealed = mutableListOf<String>()
+    private var canReveal = true
+    private val locations = FileLocations { path -> revealed += path; canReveal }
 
-    private fun viewModel() = BookDetailViewModel(9, repository, files).apply { load() }
+    private fun viewModel() = BookDetailViewModel(9, repository, files, locations).apply { load() }
 
     @BeforeTest
     fun setUp() {
@@ -112,7 +117,7 @@ class BookDetailViewModelTest {
     fun startsFromPeekedCopyBeforeLoading() {
         repository.peeked = book.copy(title = "Dari rak")
 
-        val viewModel = BookDetailViewModel(9, repository, files)
+        val viewModel = BookDetailViewModel(9, repository, files, locations)
 
         assertEquals("Dari rak", viewModel.state.value.book?.title)
         assertFalse(viewModel.state.value.isLoading)
@@ -176,6 +181,67 @@ class BookDetailViewModelTest {
         assertEquals(book, viewModel.state.value.book)
         assertEquals("gagal", viewModel.state.value.error)
         assertFalse(viewModel.state.value.isSavingFavorite)
+    }
+
+    @Test
+    fun showsWhetherBookIsSavedOffline() {
+        assertEquals(DownloadState.Missing, viewModel().state.value.download)
+
+        files.downloaded += 9
+        assertEquals(DownloadState.Saved("/cache/9.pdf"), viewModel().state.value.download)
+    }
+
+    @Test
+    fun downloadSavesBookForOffline() {
+        val viewModel = viewModel()
+
+        viewModel.onDownload()
+
+        assertEquals(DownloadState.Saved("/cache/9.pdf"), viewModel.state.value.download)
+    }
+
+    @Test
+    fun failedDownloadLetsUserTryAgain() {
+        files.result = AppResult.Failure(AppError.Server(500, "gagal"))
+        val viewModel = viewModel()
+
+        viewModel.onDownload()
+
+        assertEquals(DownloadState.Missing, viewModel.state.value.download)
+        assertEquals("gagal", viewModel.state.value.error)
+    }
+
+    @Test
+    fun removeDownloadDeletesFile() {
+        files.downloaded += 9
+        val viewModel = viewModel()
+
+        viewModel.onRemoveDownload()
+
+        assertEquals(DownloadState.Missing, viewModel.state.value.download)
+        assertEquals(listOf(9L), files.deleted)
+    }
+
+    @Test
+    fun openFolderRevealsSavedFile() {
+        files.downloaded += 9
+        val viewModel = viewModel()
+
+        viewModel.onOpenFolder()
+
+        assertEquals(listOf("/cache/9.pdf"), revealed)
+        assertNull(viewModel.state.value.error)
+    }
+
+    @Test
+    fun openFolderFailureIsShown() {
+        files.downloaded += 9
+        canReveal = false
+        val viewModel = viewModel()
+
+        viewModel.onOpenFolder()
+
+        assertEquals("Folder unduhan tidak bisa dibuka.", viewModel.state.value.error)
     }
 
     @Test

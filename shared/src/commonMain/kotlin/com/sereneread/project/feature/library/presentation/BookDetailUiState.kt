@@ -11,7 +11,16 @@ data class BookDetailUiState(
     val isDeleting: Boolean = false,
     val isDeleted: Boolean = false,
     val isSavingFavorite: Boolean = false,
+    val download: DownloadState = DownloadState.Checking,
 )
+
+/** Whether this computer holds the PDF, so the book can be read offline. */
+sealed interface DownloadState {
+    data object Checking : DownloadState
+    data object Missing : DownloadState
+    data class Downloading(val progress: Float) : DownloadState
+    data class Saved(val path: String) : DownloadState
+}
 
 data class EditForm(
     val title: String,

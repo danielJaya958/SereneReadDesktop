@@ -4,6 +4,8 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.sereneread.project.core.database.SereneReadDatabase
 import com.sereneread.project.core.platform.AwtFilePicker
+import com.sereneread.project.core.platform.DesktopFileLocations
+import com.sereneread.project.core.platform.FileLocations
 import com.sereneread.project.core.platform.FilePicker
 import com.sereneread.project.core.session.KeyringTokenStore
 import com.sereneread.project.core.session.TokenStore
@@ -37,6 +39,7 @@ actual val platformModule: Module = module {
     single<HttpClientEngine> { OkHttp.create() }
     single<TokenStore> { KeyringTokenStore(get(IoDispatcher)) }
     single<FilePicker> { AwtFilePicker() }
+    single<FileLocations> { DesktopFileLocations() }
     single { EpubParser() }
     single { PdfParser() }
     single<PageRenderer> { PdfPageRenderer(get(IoDispatcher)) }

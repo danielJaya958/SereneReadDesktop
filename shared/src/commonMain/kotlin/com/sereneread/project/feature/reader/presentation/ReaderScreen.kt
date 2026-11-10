@@ -62,21 +62,6 @@ import org.koin.core.parameter.parametersOf
 import kotlin.math.roundToInt
 
 @Composable
-fun ReaderRoute(
-    bookId: Long,
-    onBack: () -> Unit,
-    viewModel: ReaderViewModel = koinViewModel { parametersOf(bookId) },
-) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    ReaderScreen(
-        state = state,
-        onBack = onBack,
-        onProgressChanged = viewModel::onProgressChanged,
-        renderPage = viewModel::renderPage,
-    )
-}
-
-@Composable
 fun RemoteReaderRoute(
     bookId: Long,
     onBack: () -> Unit,

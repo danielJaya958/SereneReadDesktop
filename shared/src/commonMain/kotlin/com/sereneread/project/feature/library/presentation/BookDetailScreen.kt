@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,6 +79,9 @@ fun BookDetailRoute(
         onEdit = viewModel::onEditClick,
         onDelete = viewModel::onDeleteClick,
         onFavoriteToggle = viewModel::onFavoriteToggle,
+        onDownload = viewModel::onDownload,
+        onRemoveDownload = viewModel::onRemoveDownload,
+        onOpenFolder = viewModel::onOpenFolder,
     )
 
     state.editForm?.let { form ->
@@ -108,6 +113,9 @@ fun BookDetailScreen(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onFavoriteToggle: () -> Unit,
+    onDownload: () -> Unit,
+    onRemoveDownload: () -> Unit,
+    onOpenFolder: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -133,7 +141,10 @@ fun BookDetailScreen(
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
                     book != null -> Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        CatalogText(book, state, Modifier.weight(1f), onRead, onEdit, onDelete, onFavoriteToggle)
+                        CatalogText(
+                            book, state, Modifier.weight(1f), onRead, onEdit, onDelete, onFavoriteToggle,
+                            onDownload, onRemoveDownload, onOpenFolder,
+                        )
                         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                             Poster(book, loadCover)
                         }
@@ -159,6 +170,9 @@ private fun CatalogText(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onFavoriteToggle: () -> Unit,
+    onDownload: () -> Unit,
+    onRemoveDownload: () -> Unit,
+    onOpenFolder: () -> Unit,
 ) {
     val transition = LocalNavAnimatedScope.current?.transition
     val reveal = transition?.animateFloat(
@@ -223,6 +237,40 @@ private fun CatalogText(
             ArchiveLink(if (book.isFavorite) "Hapus dari favorit" else "Jadikan favorit", onFavoriteToggle, enabled = !busy)
             ArchiveLink("Edit", onEdit, enabled = !busy)
             ArchiveLink(if (state.isDeleting) "Menghapus..." else "Hapus", onDelete, enabled = !busy, color = Archive.Muted)
+        }
+
+        OfflineCopy(state.download, onDownload, onRemoveDownload, onOpenFolder, Modifier.padding(top = 20.dp))
+    }
+}
+
+/** The second row of actions: everything about the copy of the PDF kept on this computer. */
+@Composable
+private fun OfflineCopy(
+    download: DownloadState,
+    onDownload: () -> Unit,
+    onRemoveDownload: () -> Unit,
+    onOpenFolder: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+        when (download) {
+            DownloadState.Checking -> Unit
+            DownloadState.Missing -> ArchiveLink("Unduh untuk dibaca offline", onDownload)
+            is DownloadState.Downloading -> {
+                MetaLine("Mengunduh ${(download.progress * 100).toInt()}%", color = Archive.Muted)
+                LinearProgressIndicator(
+                    progress = { download.progress },
+                    modifier = Modifier.width(160.dp),
+                    color = Archive.Ink,
+                    trackColor = Archive.Line,
+                )
+                ArchiveLink("Batal", onRemoveDownload, color = Archive.Muted)
+            }
+            is DownloadState.Saved -> {
+                MetaLine("Tersimpan offline")
+                ArchiveLink("Buka lokasi file", onOpenFolder)
+                ArchiveLink("Hapus unduhan", onRemoveDownload, color = Archive.Muted)
+            }
         }
     }
 }

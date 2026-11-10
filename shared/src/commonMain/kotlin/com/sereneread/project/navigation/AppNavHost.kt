@@ -28,7 +28,7 @@ import com.sereneread.project.feature.auth.domain.SignOutUseCase
 import com.sereneread.project.feature.auth.presentation.AuthRoute
 import com.sereneread.project.feature.library.presentation.BookDetailRoute
 import com.sereneread.project.feature.library.presentation.LibraryRoute
-import com.sereneread.project.feature.reader.presentation.ReaderRoute
+import com.sereneread.project.feature.offline.data.OfflineSync
 import com.sereneread.project.feature.reader.presentation.RemoteReaderRoute
 import com.sereneread.project.feature.stats.presentation.StatsRoute
 import kotlinx.coroutines.launch
@@ -54,14 +54,15 @@ fun AppNavHost(
 /** Destinations fade into each other; the shared cover moves on top, so no screen hard-cuts. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MainNavHost(onSignOut: () -> Unit) {
+private fun MainNavHost(onSignOut: () -> Unit, sync: OfflineSync = koinInject()) {
     val navController = rememberNavController()
+    // Sends reading done offline as soon as the server is reachable again, for as long as the user is signed in.
+    LaunchedEffect(sync) { sync.keepSending() }
     SharedTransitionLayout {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
             NavHost(navController = navController, startDestination = LibraryDestination) {
                 screen<LibraryDestination> {
                     LibraryRoute(
-                        onOpenBook = { navController.navigate(ReaderDestination(it)) },
                         onOpenRemoteBook = { navController.navigate(BookDetailDestination(it)) },
                         onOpenStats = { navController.navigate(StatsDestination) },
                         onSignOut = onSignOut,
@@ -80,12 +81,6 @@ private fun MainNavHost(onSignOut: () -> Unit) {
                 screen<RemoteReaderDestination> { entry ->
                     RemoteReaderRoute(
                         bookId = entry.toRoute<RemoteReaderDestination>().bookId,
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-                screen<ReaderDestination> { entry ->
-                    ReaderRoute(
-                        bookId = entry.toRoute<ReaderDestination>().bookId,
                         onBack = { navController.popBackStack() },
                     )
                 }

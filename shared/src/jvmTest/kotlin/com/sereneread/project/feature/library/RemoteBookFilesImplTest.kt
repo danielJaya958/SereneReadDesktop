@@ -101,6 +101,16 @@ class RemoteBookFilesImplTest {
     }
 
     @Test
+    fun downloadedPathIsKnownOnlyAfterDownload() = runTest {
+        val files = files("%PDF".encodeToByteArray())
+        assertEquals(null, files.downloadedPath(9))
+
+        val path = assertIs<AppResult.Success<String>>(files.getOrDownload(9) {}).data
+
+        assertEquals(path, files.downloadedPath(9))
+    }
+
+    @Test
     fun deleteAllRemovesEveryFile() = runTest {
         val files = files("%PDF".encodeToByteArray())
         files.getOrDownload(9) {}

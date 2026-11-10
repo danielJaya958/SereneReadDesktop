@@ -17,6 +17,8 @@ import com.sereneread.project.feature.library.domain.UploadBook
 import com.sereneread.project.feature.offline.data.OfflineRemoteBookRepository
 import com.sereneread.project.feature.offline.data.OfflineStatsRepository
 import com.sereneread.project.feature.offline.data.OfflineStore
+import com.sereneread.project.feature.offline.data.OfflineSync
+import kotlinx.coroutines.flow.first
 import com.sereneread.project.feature.stats.domain.ReadingSession
 import com.sereneread.project.feature.stats.domain.StatsRepository
 import com.sereneread.project.feature.stats.domain.StatsSummary
@@ -82,9 +84,10 @@ class OfflineRepositoriesTest {
     }
 
     private val remote = FakeBooks()
-    private val repository = OfflineRemoteBookRepository(remote, store, files)
     private val remoteStats = FakeStats()
-    private val stats = OfflineStatsRepository(remoteStats, store)
+    private val sync = OfflineSync(store, remote, remoteStats)
+    private val repository = OfflineRemoteBookRepository(remote, store, files, sync)
+    private val stats = OfflineStatsRepository(remoteStats, store, sync)
 
     private fun session(id: String) = ReadingSession(
         clientSessionId = id,
@@ -261,6 +264,48 @@ class OfflineRepositoriesTest {
 
         assertEquals(1, remoteStats.sent.size)
         assertEquals(2, store.pendingSessions().size)
+    }
+
+    @Test
+    fun downloadedBooksListsEveryDownloadWithQueuedPage() = runTest {
+        store.saveBooks(listOf(book, book.copy(id = 10, title = "Lain")))
+        files.downloaded += 9
+        remote.progressFailure = networkDown
+        repository.updateProgress(9, 40)
+
+        assertEquals(listOf(book.copy(lastReadPage = 40)), repository.downloadedBooks())
+    }
+
+    @Test
+    fun pendingCountCoversProgressAndSessions() = runTest {
+        remote.progressFailure = networkDown
+        remoteStats.failure = networkDown
+        repository.updateProgress(9, 40)
+        stats.saveSession(session("a"))
+
+        assertEquals(2L, sync.pendingCount.first())
+
+        remote.progressFailure = null
+        remoteStats.failure = null
+        sync.flush()
+
+        assertEquals(0L, sync.pendingCount.first())
+    }
+
+    @Test
+    fun flushStopsWhileOffline() = runTest {
+        remote.progressFailure = networkDown
+        remoteStats.failure = networkDown
+        repository.updateProgress(9, 40)
+        stats.saveSession(session("a"))
+        remote.sentPages.clear()
+        remoteStats.sent.clear()
+
+        sync.flush()
+
+        assertEquals(listOf(40), remote.sentPages)
+        assertTrue(remoteStats.sent.isEmpty())
+        assertEquals(2L, sync.pendingCount.first())
     }
 
     @Test

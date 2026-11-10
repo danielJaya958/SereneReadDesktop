@@ -9,9 +9,6 @@ data object LibraryDestination
 data object StatsDestination
 
 @Serializable
-data class ReaderDestination(val bookId: Long)
-
-@Serializable
 data class BookDetailDestination(val bookId: Long)
 
 @Serializable

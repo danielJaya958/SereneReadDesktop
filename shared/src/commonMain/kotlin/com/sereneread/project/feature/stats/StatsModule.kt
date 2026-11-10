@@ -8,6 +8,6 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val statsModule = module {
-    single<StatsRepository> { OfflineStatsRepository(StatsRepositoryImpl(get()), get()) }
+    single<StatsRepository> { OfflineStatsRepository(StatsRepositoryImpl(get()), get(), get()) }
     viewModel { StatsViewModel(get()) }
 }

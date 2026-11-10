@@ -67,5 +67,8 @@ SELECT * FROM PendingSession;
 deletePendingSession:
 DELETE FROM PendingSession WHERE clientSessionId = ?;
 
+countPending:
+SELECT (SELECT COUNT(*) FROM PendingProgress) + (SELECT COUNT(*) FROM PendingSession);
+
 clearPendingSessions:
 DELETE FROM PendingSession;

@@ -49,6 +49,9 @@ interface RemoteBookRepository {
     /** The last copy seen in this session, without any I/O, so a screen can draw it on its first frame. */
     fun peekBook(id: Long): RemoteBook? = null
 
+    /** Books with a PDF saved on this computer, so they can be read without a network. */
+    suspend fun downloadedBooks(): List<RemoteBook> = emptyList()
+
     suspend fun updateBook(id: Long, changes: BookChanges): AppResult<RemoteBook>
     suspend fun deleteBook(id: Long): AppResult<Unit>
 

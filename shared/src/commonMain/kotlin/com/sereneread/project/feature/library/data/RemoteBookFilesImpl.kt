@@ -59,6 +59,9 @@ class RemoteBookFilesImpl(
     override suspend fun isDownloaded(bookId: Long): Boolean =
         withContext(ioDispatcher) { SystemFileSystem.exists(fileFor(bookId)) }
 
+    override suspend fun downloadedPath(bookId: Long): String? =
+        withContext(ioDispatcher) { fileFor(bookId).takeIf { SystemFileSystem.exists(it) }?.toString() }
+
     override suspend fun deleteAll() {
         withContext(ioDispatcher) {
             if (SystemFileSystem.exists(directory)) {

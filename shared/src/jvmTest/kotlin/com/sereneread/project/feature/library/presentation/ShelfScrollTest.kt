@@ -25,7 +25,7 @@ class ShelfScrollTest {
 
     @Test
     fun wheelStepsOneBookAndKeepsItCentredAtBothEnds() = runComposeUiTest {
-        var state by mutableStateOf(LibraryUiState(remoteBooks = books, isLoading = false, isLoadingRemote = false))
+        var state by mutableStateOf(LibraryUiState(remoteBooks = books, isLoadingRemote = false))
         setContent {
             SereneReadTheme {
                 LibraryScreen(
@@ -38,9 +38,7 @@ class ShelfScrollTest {
                     onSortChange = {},
                     onLoadMore = {},
                     onRetryRemote = {},
-                    onImportClick = {},
                     onUploadClick = {},
-                    onDeleteLocal = {},
                     onMessageShown = {},
                     onOpenStats = {},
                     onSignOut = {},

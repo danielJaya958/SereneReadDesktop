@@ -2,7 +2,6 @@ package com.sereneread.project.feature.offline.data
 
 import com.sereneread.project.core.network.AppError
 import com.sereneread.project.core.network.AppResult
-import com.sereneread.project.core.network.isRetryable
 import com.sereneread.project.feature.library.domain.BookChanges
 import com.sereneread.project.feature.library.domain.BookSort
 import com.sereneread.project.feature.library.domain.RemoteBook
@@ -17,6 +16,7 @@ class OfflineRemoteBookRepository(
     private val remote: RemoteBookRepository,
     private val store: OfflineStore,
     private val files: RemoteBookFiles,
+    private val sync: OfflineSync,
 ) : RemoteBookRepository by remote {
 
     private val seen = MutableStateFlow<Map<Long, RemoteBook>>(emptyMap())
@@ -24,7 +24,7 @@ class OfflineRemoteBookRepository(
     override fun peekBook(id: Long): RemoteBook? = seen.value[id]
 
     override suspend fun getBooks(page: Int, query: String, sort: BookSort): AppResult<RemoteBookPage> {
-        if (page == 1) sendPendingProgress()
+        if (page == 1) sync.flush()
         return when (val result = remote.getBooks(page, query, sort)) {
             is AppResult.Success -> {
                 val pending = store.pendingProgress()
@@ -64,21 +64,13 @@ class OfflineRemoteBookRepository(
     /** Queues first, so a timeout or crash during the request cannot lose the page. */
     override suspend fun updateProgress(id: Long, page: Int): AppResult<Unit> {
         store.queueProgress(id, page)
-        return send(id, page)
+        return sync.sendProgress(id, page)
     }
 
-    private suspend fun sendPendingProgress() {
-        for ((bookId, page) in store.pendingProgress()) {
-            if (send(bookId, page).isNetworkFailure()) return
-        }
-    }
-
-    private suspend fun send(bookId: Long, page: Int): AppResult<Unit> {
-        val result = remote.updateProgress(bookId, page)
-        if (result is AppResult.Success || (result is AppResult.Failure && !result.error.isRetryable)) {
-            store.removeProgress(bookId, page)
-        }
-        return result
+    /** Every downloaded book, not only the loaded pages, with any page still waiting to be sent. */
+    override suspend fun downloadedBooks(): List<RemoteBook> {
+        val pending = store.pendingProgress()
+        return store.books().filter { files.isDownloaded(it.id) }.map { it.withPending(pending) }
     }
 
     /**
@@ -118,6 +110,4 @@ class OfflineRemoteBookRepository(
             BookSort.AUTHOR -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.author }
             BookSort.PUBLISHED_YEAR -> compareByDescending { it.publishedYear }
         }
-
-    private fun AppResult<Unit>.isNetworkFailure() = this is AppResult.Failure && error is AppError.Network
 }

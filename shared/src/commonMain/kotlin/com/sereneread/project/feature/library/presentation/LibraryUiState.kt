@@ -1,12 +1,9 @@
 package com.sereneread.project.feature.library.presentation
 
-import com.sereneread.project.feature.library.domain.Book
 import com.sereneread.project.feature.library.domain.BookSort
 import com.sereneread.project.feature.library.domain.RemoteBook
 
 data class LibraryUiState(
-    val books: List<Book> = emptyList(),
-    val isLoading: Boolean = true,
     val message: String? = null,
     val query: String = "",
     val sort: BookSort = BookSort.NEWEST,
@@ -19,11 +16,15 @@ data class LibraryUiState(
     val isLoadingRemote: Boolean = true,
     val remoteError: String? = null,
     val isOffline: Boolean = false,
+    /** Every book saved on this computer, which is also what the Downloaded filter shows. */
+    val downloaded: List<RemoteBook> = emptyList(),
+    /** Progress pages and reading sessions still waiting for the server. */
+    val pendingSync: Long = 0,
     val uploadForm: UploadForm? = null,
 )
 
 /** Which books the shelf shows. Favorites are left out: the server cannot filter them across pages. */
-enum class ShelfFilter { ALL, ONLINE, LOCAL }
+enum class ShelfFilter { ALL, DOWNLOADED }
 
 data class UploadForm(
     val filePath: String,

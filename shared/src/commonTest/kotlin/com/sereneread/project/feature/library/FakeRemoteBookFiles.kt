@@ -11,13 +11,17 @@ class FakeRemoteBookFiles : RemoteBookFiles {
 
     override suspend fun getOrDownload(bookId: Long, onProgress: (Float) -> Unit): AppResult<String> {
         onProgress(0.5f)
+        if (result is AppResult.Success) downloaded += bookId
         return result
     }
 
     override suspend fun isDownloaded(bookId: Long) = bookId in downloaded
 
+    override suspend fun downloadedPath(bookId: Long) = if (bookId in downloaded) "/cache/$bookId.pdf" else null
+
     override suspend fun delete(bookId: Long) {
         deleted += bookId
+        downloaded -= bookId
     }
 
     override suspend fun deleteAll() {

@@ -48,7 +48,7 @@ data class ShelfBook(
     val thumbnailUrl: String?,
     val isFavorite: Boolean,
     val remoteId: Long? = null,
-    val localId: Long? = null,
+    val isDownloaded: Boolean = false,
 ) {
     val ink: Color get() = Archive.SpineInks[(key.hashCode() and Int.MAX_VALUE) % Archive.SpineInks.size]
     val inkText: Color get() = if (ink == Archive.OchreSpine) Archive.OchreText else Archive.Paper
